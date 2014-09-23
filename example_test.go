@@ -9,7 +9,7 @@ package fsnotify_test
 import (
 	"log"
 
-	"code.google.com/p/go.exp/fsnotify"
+	"gopkg.in/fsnotify.v1"
 )
 
 func ExampleNewWatcher() {
@@ -17,20 +17,26 @@ func ExampleNewWatcher() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer watcher.Close()
 
+	done := make(chan bool)
 	go func() {
 		for {
 			select {
-			case ev := <-watcher.Event:
-				log.Println("event:", ev)
-			case err := <-watcher.Error:
+			case event := <-watcher.Events:
+				log.Println("event:", event)
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					log.Println("modified file:", event.Name)
+				}
+			case err := <-watcher.Errors:
 				log.Println("error:", err)
 			}
 		}
 	}()
 
-	err = watcher.Watch("/tmp/foo")
+	err = watcher.Add("/tmp/foo")
 	if err != nil {
 		log.Fatal(err)
 	}
+	<-done
 }
